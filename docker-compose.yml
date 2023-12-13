@@ -1,0 +1,55 @@
+version: '3'
+services:
+  mysql:
+    container_name: mysql_db
+    image: mysql:8.0.27
+    platform: linux/x86_64
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: mysql
+      MYSQL_DATABASE: todo-db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    restart: always
+    networks:
+      - mysql-network
+    volumes:
+      - todo-db:/var/lib/mysql
+      - ./docker/mysql/sql:/docker-entrypoint-initdb.d
+    healthcheck: # here
+      test:
+        [
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          'localhost',
+          '-u',
+          'root',
+          '-pmysql',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  api:
+    container_name: nestjs_api
+    image: todo-api
+    ports:
+      - '3000:3000'
+    build: ./
+    tty: true
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - mysql-network
+
+networks:
+  mysql-network:
+    driver: bridge
+
+volumes:
+  todo-db:
